@@ -1,0 +1,19 @@
+<html xmlns:concordion="http://www.concordion.org/2007/concordion">
+<link href="../../concordion.css" rel="stylesheet" type="text/css" />
+<body>
+
+    <h1>User register</h1>
+    <div class="example">
+        <h3>Register with the following information:</h3>
+        <p>
+            <span concordion:execute="#user_id = uniqueUserId()"></span><br />
+            User Id: <span concordion:echo="#user_id"></span> <br />
+            User Name: <span concordion:set="#user_name">scxu</span> <br />
+            Email: <span concordion:set="#email">scxu@thoughtworks.com</span> <br />
+            The response status code should be
+            <b concordion:assertEquals="importUser(#user_id, #user_name, #email)">201</b>
+        </p>
+    </div>
+
+</body>
+</html>

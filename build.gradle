@@ -1,0 +1,178 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.flywaydb:flyway-gradle-plugin:3.0"
+        classpath 'mysql:mysql-connector-java:5.1.34'
+    }
+}
+
+apply plugin: 'application'
+apply plugin: 'java'
+apply plugin: 'flyway'
+apply plugin: 'idea'
+
+def currentEnv = System.getenv()
+
+mainClassName = "com.thoughtworks.ketsu.MainServer"
+
+flyway {
+    driver = 'com.mysql.jdbc.Driver'
+    url = String.format(
+            "jdbc:mysql://%s:%s/%s?user=%s&password=%s&allowMultiQueries=true&zeroDateTimeBehavior=convertToNull",
+            currentEnv.getOrDefault("DB_HOST", "localhost"),
+            currentEnv.getOrDefault("DB_PORT", 3306),
+            currentEnv.getOrDefault("DB_ON_CREATE_DB", "data_store"),
+            currentEnv.getOrDefault("DB_MYSQL_USER", "mysql"),
+            currentEnv.getOrDefault("DB_MYSQL_PASS", "mysql"))
+}
+
+repositories {
+    jcenter()
+}
+
+sourceSets {
+    itest
+    test {
+        resources {
+            srcDir 'src/itest/resources'
+        }
+    }
+}
+
+ext {
+    main='com.thoughtworks.ketsu.MainServer'
+    joda_time = '2.6'
+    servlet_api = '3.0.1'
+    jaxrs = '2.0.1'
+    hk2_api = '2.4.0-b09'
+    junit = '4.12'
+    guice = '3.0'
+    jersey = '2.17'
+    mockito = '1.9.5'
+    hamcrest = '1.3'
+    slf4j = '1.7.13'
+    guava = '18.0'
+    mybatis = '3.3.0'
+    mybatis_guice = '3.7'
+    guice_bridge = '2.4.0-b09'
+    jackson_joda = '2.4.0'
+}
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+dependencies {
+    compile "org.slf4j:slf4j-api:$slf4j"
+    compile "org.slf4j:jcl-over-slf4j:$slf4j"
+    compile "org.slf4j:slf4j-log4j12:$slf4j"
+    compile files("lib/jbcrypt.jar")
+
+    compile "org.mybatis:mybatis:$mybatis"
+    compile "org.glassfish.hk2:guice-bridge:$guice_bridge"
+    compile "org.mybatis:mybatis-guice:$mybatis_guice"
+
+    compile "org.glassfish.jersey.core:jersey-server:$jersey"
+    compile "org.glassfish.jersey.media:jersey-media-json-jackson:$jersey"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jackson_joda"
+    compile "org.glassfish.jersey.containers:jersey-container-grizzly2-http:$jersey"
+    compile "org.glassfish.jersey.containers:jersey-container-servlet-core:2.17"
+    compile 'org.glassfish.grizzly:grizzly-http-servlet:2.3.16'
+
+    compile "joda-time:joda-time:$joda_time"
+    compile "javax.servlet:javax.servlet-api:$servlet_api"
+    compile "javax.ws.rs:javax.ws.rs-api:$jaxrs"
+    compile "org.glassfish.hk2:guice-bridge:$hk2_api"
+    compile "org.glassfish.jersey.media:jersey-media-json-jackson:$jersey"
+
+    compile "com.google.inject:guice:$guice"
+    compile "com.google.guava:guava:$guava"
+    compile 'com.orbitz.consul:consul-client:0.9.16'
+
+    compile 'com.google.code.gson:gson:2.3'
+
+    itestCompile 'commons-io:commons-io:2.4'
+    itestCompile "org.apache.commons:commons-lang3:3.3.2"
+    itestCompile group: 'junit', name: 'junit', version: '4.12'
+    itestCompile 'org.concordion:concordion:1.5.0'
+    itestCompile "org.glassfish.jersey.core:jersey-server:$jersey"
+    itestCompile "org.glassfish.jersey.media:jersey-media-json-jackson:$jersey"
+
+    runtime 'mysql:mysql-connector-java:5.1.34'
+
+    testCompile "junit:junit:$junit"
+    testCompile "org.hamcrest:hamcrest-all:$hamcrest"
+    testCompile "org.mockito:mockito-all:$mockito"
+
+    testCompile "org.glassfish.jersey.test-framework:jersey-test-framework-core:$jersey"
+    testCompile "org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-grizzly2:$jersey"
+}
+
+task standaloneJar(type: Jar, dependsOn: jar) {
+    baseName = "app"
+    classifier = "standalone"
+    version = ""
+
+    from files(sourceSets.main.output.classesDir)
+    from files(sourceSets.main.output.resourcesDir)
+
+    from configurations.runtime.asFileTree.files.collect { zipTree(it) }
+
+    exclude("META-INF/*.SF")
+    exclude("META-INF/*.DSA")
+    exclude("META-INF/*.RSA")
+    exclude("META-INF/*.RSA")
+    exclude("META-INF/*.RSA")
+    manifest {
+        attributes 'Main-Class': "$main"
+    }
+}
+
+task itestJar(type: Jar, dependsOn: jar) {
+    baseName = "verify"
+    classifier = "standalone"
+    version = ""
+
+    from files(sourceSets.itest.output.classesDir)
+    from files(sourceSets.itest.output.resourcesDir)
+
+    from configurations.itestCompile.asFileTree.files.collect { zipTree(it) }
+
+    exclude("META-INF/*.SF")
+    exclude("META-INF/*.DSA")
+    exclude("META-INF/*.RSA")
+    exclude("META-INF/*.RSA")
+    exclude("META-INF/*.RSA")
+    manifest {
+        attributes 'Main-Class': 'specs.Main'
+    }
+}
+
+task itest(type: Exec) {
+    def _env = [:]
+    _env << System.getenv();
+    environment = _env
+    commandLine 'java', '-jar', "build/libs/verify-standalone.jar"
+}
+
+itest.dependsOn itestJar
+
+itestJar.dependsOn itestClasses
+
+task integrationTest(type: Test) {
+    testClassesDir = sourceSets.itest.output.classesDir
+    classpath = sourceSets.itest.runtimeClasspath
+}
+
+task initDataInDB(){
+    doFirst {
+        flyway {
+            locations = ['classpath:db/init']
+            initOnMigrate = true
+            table = 'schema_version_for_data'
+        }
+    }
+    doLast {
+        tasks.flywayMigrate.execute()
+    }
+}

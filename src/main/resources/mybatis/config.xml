@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <properties>
+        <property name="defaultExecutorType" value="BATCH"/>
+    </properties>
+    <settings>
+        <setting name="useGeneratedKeys" value="true"/>
+    </settings>
+    <typeHandlers>
+        <typeHandler handler="com.thoughtworks.ketsu.infrastructure.mybatis.handlers.DateTimeTypeHandler"
+                     javaType="org.joda.time.DateTime"/>
+    </typeHandlers>
+    <objectFactory type="com.thoughtworks.ketsu.infrastructure.mybatis.factory.ObjectFactory"/>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC">
+                <property name="closeConnection" value="false"/>
+                <property name="autoCommit" value="false"/>
+            </transactionManager>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="${db.url}"/>
+                <property name="driver.encoding" value="UTF8"/>
+                <property name="poolPingQuery" value="select 1"/>
+                <property name="poolPingEnabled" value="true"/>
+                <property name="poolPingConnectionsNotUsedFor" value="3600000"/>
+                <property name="poolMaximumActiveConnections" value="50" />
+                <property name="poolMaximumIdleConnections" value="50" />
+            </dataSource>
+        </environment>
+    </environments>
+    <mappers>
+        <mapper resource="mybatis/mappers/Records.xml"/>
+        <mapper resource="mybatis/mappers/Columns.xml"/>
+        <mapper resource="mybatis/mappers/UserMapper.xml"/>
+    </mappers>
+</configuration>
